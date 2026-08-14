@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en" data-mode="factory" data-motion="full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shipping Floor</title>
+  <link rel="stylesheet" href="/style.css" />
+  <!--
+    Strudel (@strudel/web, AGPL-3.0) is loaded here as its own package from a
+    CDN and never vendored into this repo. The Node orchestrator only sends
+    pattern strings to this page.
+  -->
+  <script src="https://unpkg.com/@strudel/web@1.3.0"></script>
+</head>
+<body>
+  <!-- Two live regions, and only two. -->
+  <p id="sr-polite" class="sr-only" aria-live="polite"></p>
+  <p id="sr-assertive" class="sr-only" aria-live="assertive"></p>
+
+  <header>
+    <h1><span class="accent">Shipping</span> Floor</h1>
+    <span class="tagline">an agentic software factory you can hear</span>
+    <span class="chip" id="role-chip">SPECTATOR</span>
+    <span class="chip" id="visual-chip">VISUAL: CLOCK</span>
+    <span class="conn" id="conn">connecting…</span>
+  </header>
+
+  <!--
+    Every arrangement change is a LaunchDarkly action, so the way in is not a
+    detail tucked inside a selected agent's panel — it is the primary control
+    surface and lives here, always visible, all three at once.
+  -->
+  <nav class="ld-bar" id="ld-bar" aria-label="Open in LaunchDarkly">
+    <span class="ld-bar-label">Change what they play →</span>
+  </nav>
+
+  <!-- The seam is the argument: BUILD ‖ RELEASE -->
+  <div class="production-line" id="production-line" aria-label="Production line"></div>
+
+  <main>
+    <section class="stage-area">
+      <!--
+        Pre-placed so we own resize: Strudel's getDrawContext() reuses an
+        existing #test-canvas and only attaches its own resize listener when
+        it has to create one.
+      -->
+      <canvas id="test-canvas" aria-hidden="true"></canvas>
+      <p id="canvas-description" class="sr-only">Waiting for the first generation.</p>
+
+      <div class="agent-rack" id="agent-rack" role="list"></div>
+    </section>
+
+    <aside class="tower" aria-label="Control Tower">
+      <h2 class="tower-agent" id="tower-agent">drummer</h2>
+
+      <section class="panel">
+        <h3>Serving</h3>
+        <div class="row"><code>config</code><span class="value" id="tower-config">—</span></div>
+        <div class="row"><code>variation</code><span class="value" id="tower-variation">—</span></div>
+        <div class="row"><code>model</code><span class="value" id="tower-model">—</span></div>
+        <div class="row"><code>contexts</code><span class="value" id="tower-contexts">—</span></div>
+        <p class="reason" id="tower-reason">—</p>
+        <a class="edit" id="tower-edit" target="_blank" rel="noopener" hidden>edit in LaunchDarkly ↗</a>
+      </section>
+
+      <section class="panel">
+        <h3>Prompt composition</h3>
+        <div id="tower-snippets"></div>
+        <p class="footer" id="tower-prompt-footer">waiting for the first generation</p>
+      </section>
+
+      <section class="panel">
+        <h3>Guardrails</h3>
+        <div class="tiles">
+          <div class="tile"><span class="tile-label">peak gain</span><span class="tile-value" id="tower-gain">—</span></div>
+          <div class="tile"><span class="tile-label">ceiling</span><span class="tile-value" id="tower-ceiling">—</span></div>
+          <div class="tile"><span class="tile-label">breaches</span><span class="tile-value" id="tower-breaches">0</span></div>
+          <div class="tile"><span class="tile-label">held</span><span class="tile-value" id="tower-held">0</span></div>
+          <div class="tile"><span class="tile-label">published</span><span class="tile-value" id="tower-published">0</span></div>
+          <div class="tile">
+            <span class="tile-label">mix discipline</span>
+            <span class="tile-value"><span id="tower-gain-glyph"></span> <span id="tower-gain-word">within</span></span>
+          </div>
+        </div>
+        <svg class="spark" id="tower-spark" aria-hidden="true"></svg>
+      </section>
+
+      <!--
+        Observed, not configured. The server SDK evaluates flags; it has no API
+        for guarded-rollout progress. Rather than render a status this app
+        cannot know, this panel counts what was actually served across recent
+        traffic — which is where a percentage rollout, a rule match, and a
+        guarded rollout ramping all become visible anyway.
+      -->
+      <section class="panel" id="tower-split">
+        <h3>Served split</h3>
+        <div class="split-rows"></div>
+        <p class="footer split-note">over the last <span class="split-total">0</span> takes · observed, not configured</p>
+        <p class="empty split-empty">waiting for the first generation</p>
+      </section>
+    </aside>
+  </main>
+
+  <div class="transport">
+    <button id="play">▶ Play</button>
+    <button id="motion">motion: full</button>
+    <div class="stat"><span class="label">Section</span><span class="value" id="section-value">—</span></div>
+    <div class="stat"><span class="label">Energy</span><span class="value" id="energy-value">—</span></div>
+    <div class="stat"><span class="label">Key</span><span class="value" id="key-value">—</span></div>
+    <div class="stat"><span class="label">Tempo</span><span class="value" id="tempo-value">—</span></div>
+    <div class="stat"><span class="label">Cycle</span><span class="value" id="cycle-value">0</span></div>
+    <div class="stat"><span class="label">Listener</span><span class="value" id="listener-value">—</span></div>
+
+    <div class="ledger" aria-label="Factory ledger">
+      <span><b id="ledger-generations">0</b> generated</span>
+      <span><b id="ledger-published">0</b> shipped</span>
+      <span><b id="ledger-rejected">0</b> rejected</span>
+      <span><b id="ledger-breaches">0</b> breaches</span>
+      <span><b id="ledger-held">0</b> held</span>
+      <span><b id="ledger-retries">0</b> retries</span>
+    </div>
+  </div>
+
+  <template id="tpl-agent-row">
+    <div class="agent-row" role="listitem" tabindex="0" aria-expanded="false">
+      <div class="agent-head">
+        <span class="agent-swatch" aria-hidden="true"></span>
+        <span class="agent-name"></span>
+        <span class="agent-variation"></span>
+        <span class="agent-status"></span>
+        <span class="agent-gain"></span>
+        <span class="agent-meter" aria-hidden="true">
+          <span class="meter-bar"></span><span class="meter-bar"></span><span class="meter-bar"></span>
+        </span>
+      </div>
+      <pre class="agent-pattern"></pre>
+    </div>
+  </template>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

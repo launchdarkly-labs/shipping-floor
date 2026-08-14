@@ -1,0 +1,419 @@
+/**
+ * Palette, with one semantic rule doing all the work:
+ *
+ *   LaunchDarkly owns the CHROME, the three agents own the COLOUR, and
+ *   synthwave contributes form language rather than hues.
+ *
+ * LD teal means "the control plane is doing something" and is deliberately
+ * NOT one of the agent colours, so it never competes with them.
+ *
+ * The agent triad is amber / sky / orchid rather than the more obvious
+ * synthwave pink / cyan / yellow, on evidence: pink and yellow collapse
+ * toward each other under deuteranopia and tritanopia, which would turn the
+ * two loudest voices into one voice for a meaningful share of any audience.
+ * Agent identity therefore carries three redundant encodings — hue, mark form
+ * (bars / ribbon / spokes on canvas, solid / dashed / dotted in the DOM), and
+ * the literal name.
+ *
+ * No webfont: zero FOUT on a projector, and mono is load-bearing for pattern
+ * code.
+ */
+:root {
+  --agent-0: #b45309; /* drummer — amber  */
+  --agent-1: #1d4ed8; /* bassist — sky    */
+  --agent-2: #a21caf; /* keys    — orchid */
+
+  --ld: #0f766e;
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --ink: #14151a;
+  --ink-dim: #55596b;
+  --rule: #d9dce8;
+  --status-bad: #b91c1c;
+  --status-good: #15803d;
+
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --tower-width: 340px;
+  --line-height: 76px;
+}
+
+:root:not([data-theme="light"]) {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --agent-0: #fbbf24;
+    --agent-1: #38bdf8;
+    --agent-2: #f0abfc;
+    --ld: #14d4c4;
+    --bg: #07060f;
+    --panel: rgba(22, 24, 38, 0.72);
+    --ink: #eef0f8;
+    --ink-dim: #9aa0b8;
+    --rule: rgba(255, 255, 255, 0.12);
+    --status-bad: #f87171;
+    --status-good: #4ade80;
+  }
+}
+
+:root[data-theme="dark"] {
+  --agent-0: #fbbf24;
+  --agent-1: #38bdf8;
+  --agent-2: #f0abfc;
+  --ld: #14d4c4;
+  --bg: #07060f;
+  --panel: rgba(22, 24, 38, 0.72);
+  --ink: #eef0f8;
+  --ink-dim: #9aa0b8;
+  --rule: rgba(255, 255, 255, 0.12);
+  --status-bad: #f87171;
+  --status-good: #4ade80;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  /* Authored for 1280x720 minimum. The rack scrolls, never the page. */
+  min-width: 960px;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto auto var(--line-height) 1fr auto;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  overflow: hidden;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- header */
+
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--rule);
+}
+
+h1 { font-size: 18px; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+.accent { color: var(--ld); }
+.tagline { color: var(--ink-dim); font-size: 13px; }
+
+.chip {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  color: var(--status-good);
+}
+.chip + .chip { margin-left: 0; }
+.chip[data-spectator], .chip[data-degraded] { color: var(--status-bad); border-color: currentColor; }
+
+.conn { font-size: 12px; color: var(--status-bad); font-family: var(--mono); }
+.conn[data-connected] { color: var(--status-good); }
+
+/* --------------------------------------------- launchdarkly bar */
+
+.ld-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  border-bottom: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--ld) 10%, transparent);
+}
+
+.ld-bar-label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.ld-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 4px 12px;
+  border: 1px solid color-mix(in srgb, var(--ld) 45%, transparent);
+  border-radius: 4px;
+  color: var(--ld);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ld-link:hover { background: color-mix(in srgb, var(--ld) 16%, transparent); }
+.ld-link:focus-visible { outline: 2px solid var(--ld); outline-offset: 2px; }
+
+/* The agent's own colour, so the link is findable by the same encoding the
+   rack and canvas already use. */
+.ld-link .ld-swatch { width: 8px; height: 8px; border-radius: 2px; background: var(--agent-color); flex: none; }
+.ld-link[data-agent="drummer"] { --agent-color: var(--agent-0); }
+.ld-link[data-agent="bassist"] { --agent-color: var(--agent-1); }
+.ld-link[data-agent="keys"] { --agent-color: var(--agent-2); }
+
+.ld-link.project { margin-left: auto; border-style: dashed; }
+
+/* ------------------------------------------------- production line */
+
+.production-line {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--rule);
+  /* Non-optional scrim: the canvas sun sits directly behind this strip. */
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+}
+
+.line-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  position: relative;
+}
+
+/* The seam. Everything left of it you already built. */
+.line-node[data-group="release"]:first-of-type { border-left: 2px solid var(--ld); margin-left: 14px; }
+
+.line-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--rule);
+  transition: background 160ms;
+}
+.line-node[data-state="active"] .line-dot { background: var(--ld); }
+.line-node[data-state="done"] .line-dot { background: var(--status-good); }
+.line-node[data-state="alarm"] .line-dot { background: var(--status-bad); }
+.line-node[data-unattended] { opacity: 0.45; }
+
+.line-count { font-family: var(--mono); font-size: 11px; color: var(--ink); }
+
+/* -------------------------------------------------------------- main */
+
+main {
+  display: grid;
+  grid-template-columns: 1fr var(--tower-width);
+  min-height: 0;
+}
+
+.stage-area { position: relative; min-height: 0; display: grid; grid-template-rows: minmax(200px, 1fr) auto; }
+
+/*
+ * The canvas owns its own grid row rather than sitting absolutely behind the
+ * rack. Stacking them meant the agent panels covered the lower two thirds of
+ * the visualisation — the bassist band, the keys band, the horizon, and the
+ * scrolling beat grid were all permanently behind glass. A background the
+ * foreground obscures is not a background, it is wasted paint.
+ */
+#test-canvas { display: block; width: 100%; height: 100%; min-height: 0; }
+[data-canvas="off"] #test-canvas { display: none; }
+
+/* Showroom: canvas dominant, instrumentation minimal. */
+[data-mode="showroom"] .tower { display: none; }
+[data-mode="showroom"] main { grid-template-columns: 1fr; }
+[data-mode="showroom"] .agent-pattern { display: none; }
+
+/* Burn-in answers a different question, so it gets a different screen. */
+[data-mode="burnin"] #test-canvas { display: none; }
+
+/* ------------------------------------------------------- agent rack */
+
+.agent-rack {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  overflow-y: auto;
+  /* Hard cap: the rack scrolls, the canvas keeps its room. Without this a
+     long pattern in the expanded row pushes the visualisation off screen. */
+  max-height: 42vh;
+}
+
+.agent-row {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--agent-color);
+  border-radius: 6px;
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.agent-row:nth-child(1) { --agent-color: var(--agent-0); }
+.agent-row:nth-child(2) { --agent-color: var(--agent-1); border-left-style: dashed; }
+.agent-row:nth-child(3) { --agent-color: var(--agent-2); border-left-style: dotted; }
+
+.agent-row[data-selected] { border-color: var(--ld); }
+.agent-row[data-fresh] { box-shadow: 0 0 0 2px color-mix(in srgb, var(--agent-color) 50%, transparent); }
+
+.agent-head { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.agent-swatch { width: 10px; height: 10px; border-radius: 2px; background: var(--agent-color); flex: none; }
+.agent-name { font-weight: 600; min-width: 72px; }
+.agent-variation { font-family: var(--mono); font-size: 11px; color: var(--ld); }
+.agent-variation[data-alarm] { color: var(--status-bad); font-weight: 700; }
+.agent-status { color: var(--ink-dim); font-size: 11px; margin-left: auto; }
+.agent-gain { font-family: var(--mono); font-size: 12px; }
+.agent-gain[data-breaching] { color: var(--status-bad); font-weight: 700; }
+
+.agent-meter { display: flex; gap: 2px; align-items: flex-end; height: 16px; width: 22px; }
+.meter-bar {
+  flex: 1;
+  background: var(--agent-color);
+  height: calc(var(--level, 0) * 100%);
+  min-height: 1px;
+}
+
+.agent-pattern {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  margin: 8px 0 0;
+  max-height: 0;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.agent-row[data-selected] .agent-pattern { max-height: 132px; overflow: auto; }
+
+/* ----------------------------------------------------- control tower */
+
+.tower {
+  border-left: 1px solid var(--rule);
+  padding: 14px;
+  overflow-y: auto;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+}
+
+.tower-agent { font-size: 14px; margin: 0 0 12px; text-transform: capitalize; }
+
+.panel { border-top: 1px dashed var(--rule); padding: 12px 0; }
+.panel h3 {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin: 0 0 8px;
+}
+
+.row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline; padding: 2px 0; }
+.row code { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
+.row .value { font-family: var(--mono); font-size: 11px; text-align: right; word-break: break-all; }
+.value[data-alarm] { color: var(--status-bad); font-weight: 700; }
+
+.reason { grid-column: 1 / -1; font-size: 11px; color: var(--ink-dim); margin: 6px 0 0; line-height: 1.5; }
+.edit { font-size: 11px; color: var(--ld); }
+.footer, .empty { font-size: 11px; color: var(--ink-dim); margin: 8px 0 0; }
+
+.snippet-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 3px 0; align-items: baseline; }
+.snippet-row code { font-family: var(--mono); font-size: 11px; word-break: break-all; }
+.pill {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tile { border: 1px solid var(--rule); border-radius: 4px; padding: 6px 8px; }
+.tile:last-child { grid-column: 1 / -1; }
+.tile-label { display: block; font-size: 10px; color: var(--ink-dim); }
+.tile-value { font-family: var(--mono); font-size: 15px; }
+.tile-value[data-breaching] { color: var(--status-bad); }
+
+.spark { width: 100%; height: 28px; margin-top: 10px; overflow: visible; }
+.spark-line { fill: none; stroke: var(--ld); stroke-width: 1.5; }
+.spark-threshold { stroke: var(--ink-dim); stroke-width: 1; stroke-dasharray: 3 3; }
+.spark-breach { fill: var(--status-bad); }
+
+.split-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; padding: 4px 0; align-items: baseline; }
+.split-row code { font-family: var(--mono); font-size: 11px; word-break: break-all; }
+.split-percent { font-family: var(--mono); font-size: 11px; }
+.split-bar { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--rule); overflow: hidden; }
+.split-fill {
+  display: block;
+  height: 100%;
+  width: var(--percent, 0%);
+  background: var(--ld);
+  /* 700ms is the budget spent here deliberately: when a guarded rollout is
+     reverted this fill retreating to 0 is the single most legible signal in
+     the UI for "rolled back". */
+  transition: width 700ms ease;
+}
+
+/* --------------------------------------------------------- transport */
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+}
+
+button {
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+button:focus-visible, .agent-row:focus-visible { outline: 2px solid var(--ld); outline-offset: 2px; }
+
+.stat { display: flex; flex-direction: column; }
+.stat .label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+.stat .value { font-family: var(--mono); font-size: 12px; }
+
+.ledger { margin-left: auto; display: flex; gap: 14px; font-size: 11px; color: var(--ink-dim); }
+.ledger b { font-family: var(--mono); color: var(--ink); }
+
+/* ------------------------------------------------- projector safety */
+
+/*
+ * Glass over a projected image is the single biggest legibility killer, so
+ * high contrast REMOVES backdrop-filter entirely rather than tuning it.
+ */
+[data-contrast="high"] .tower,
+[data-contrast="high"] .agent-row {
+  backdrop-filter: none;
+  background: var(--bg);
+}
+[data-contrast="high"] { --rule: currentColor; }
+
+[data-density="projector"] { font-size: 18.5px; --tower-width: 380px; }
+
+/*
+ * Reduced motion leaves the canvas ALIVE — a still frame per cycle boundary,
+ * bars still responding — rather than dead. A frozen visualisation reads as a
+ * crash, which is worse than the motion it was meant to spare.
+ */
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+[data-motion="off"] #test-canvas { opacity: 0.35; }

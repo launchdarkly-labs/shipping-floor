@@ -1,0 +1,16 @@
+node_modules/
+
+# Every env file except the checked-in template. The narrow `.env` rule was not
+# enough: a stray `.env.bak`, created by a backup command, fell outside it and
+# was committed with real credentials in it. Ignore the whole family and allow
+# back only the template.
+.env
+.env.*
+!.env.example
+
+rehearsal-*.md
+.DS_Store
+
+# Working notes and drafts stay out of the repo entirely. The README is the
+# only documentation this project ships.
+docs/

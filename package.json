@@ -1,0 +1,23 @@
+{
+  "name": "shipping-floor",
+  "version": "0.2.0",
+  "description": "An agentic software factory you can hear: three AI musicians whose every note of vocabulary is delivered, targeted, measured, and rolled back by LaunchDarkly",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "seed": "node --env-file-if-exists=.env scripts/seed.js",
+    "burn-in": "node --env-file-if-exists=.env scripts/burn-in.js",
+    "rehearsal": "node --env-file-if-exists=.env scripts/rehearsal.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.57.0",
+    "@launchdarkly/node-server-sdk": "^9.13.0",
+    "@launchdarkly/server-sdk-ai": "^0.20.0",
+    "ws": "^8.18.0"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "tempo": {
+    "cps": 0.5
+  },
+  "key": "A",
+  "scale": "minor",
+  "regenerateEveryCycles": 8,
+  "settleAfterBoundaryCycles": 2,
+  "musicians": {
+    "drummer": {
+      "regenerateOffset": 0
+    },
+    "bassist": {
+      "regenerateOffset": 3
+    },
+    "keys": {
+      "regenerateOffset": 6
+    }
+  },
+  "sections": [
+    {
+      "name": "intro",
+      "cycles": 8,
+      "energy": "low",
+      "players": [
+        "drummer",
+        "bassist"
+      ]
+    },
+    {
+      "name": "groove",
+      "cycles": 16,
+      "energy": "medium",
+      "players": [
+        "drummer",
+        "bassist",
+        "keys"
+      ]
+    },
+    {
+      "name": "lift",
+      "cycles": 16,
+      "energy": "high",
+      "players": [
+        "drummer",
+        "bassist",
+        "keys"
+      ]
+    },
+    {
+      "name": "breakdown",
+      "cycles": 8,
+      "energy": "low",
+      "players": [
+        "bassist",
+        "keys"
+      ]
+    },
+    {
+      "name": "groove",
+      "cycles": 16,
+      "energy": "medium",
+      "players": [
+        "drummer",
+        "bassist",
+        "keys"
+      ]
+    }
+  ]
+}
