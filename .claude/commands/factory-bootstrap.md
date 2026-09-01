@@ -16,66 +16,74 @@ OAuth.
 Read `seed/configs.json` and `seed/snippets/` yourself. Do not invent keys,
 bodies, parameters, or targeting clauses.
 
-## Before you create anything
+## Establish the target
 
-1. Read the project key from `.env` (`LAUNCHDARKLY_PROJECT_KEY`) or ask the
-   user for the key of the project they **just created**. Use that key
-   everywhere. Do not default to `shipping-floor`. Do not write into a
-   project that already has `drummer`, `bassist`, or `keys` configs unless
-   the user confirms they want to reuse it.
-2. Probe the MCP with `list-projects` before any write. A successful
-   auth helper is not enough if the next call returns `token_expired`.
-   In Cursor, production writes sit behind an approval card. Retry after
-   the user approves. That is bootstrap, not a customer rollout.
-3. Run `npm run seed` and keep that output. It is the spec. Create exactly
-   what it prints. The line `seed default project: shipping-floor` is the
-   seed file. The line `this run targets:` is the project you write to.
+1. Read `LAUNCHDARKLY_PROJECT_KEY` from `.env`, or ask for the key of the
+   project the user just created. Use it for every MCP call. Never default
+   to `shipping-floor`.
+2. Stop if that project already contains `drummer`, `bassist`, or `keys`
+   unless the user explicitly wants to reuse it.
+3. Probe the connection with `list-projects`. An auth helper can report
+   success while the API still returns `token_expired`; if that happens,
+   tell the user to reconnect the server.
+4. Run `npm run seed`. Treat its output as the specification. The
+   `this run targets:` line must name the project from `.env`.
 
-## Create, in this order
+Cursor may pause production writes behind an approval card. Wait for the
+user to approve, then retry the same operation.
 
-Report anything you could not create rather than substituting a value.
+## Phase 1: Create the foundation
 
-1. **Snippets.** `create-prompt-snippet` for every file in `seed/snippets/`,
-   at version 1, body verbatim.
-2. **Configs and variations.** `create-agentcontrol-config` for `drummer`,
-   `bassist`, and `keys`. Then `create-agentcontrol-config-variation` for
-   every variation the seed prints. Each variation's system message is the
-   three snippet references in this order: persona, mix discipline,
-   vocabulary. Parameters must include `gain_ceiling` and
-   `strict_gain_ceiling` exactly as printed. Use the seed's `model` block
-   as-is: `modelConfigKey` and `modelName` are not interchangeable.
-3. **Targeting.** `update-agentcontrol-config-targeting` (or
-   `update-targeting-rules`) so first-match-wins rules match the seed.
-   Set each config's fallthrough to the variation or percentage rollout the
-   seed names. A new config serves nothing until the fallthrough points at a
-   real variation.
-4. **Flag.** `create-flag` for `strict-mix-gate`, kind `boolean`. The
-   default on-variation is `true`. `update-rollout` (or the equivalent
-   fallthrough update) so the default rule serves `false`, then
-   `toggle-flag` **ON**. Do not start a guarded rollout.
-5. **Kinds, then metrics.** Do not create metrics yet unless `request`
-   already exists and has **Available for experiments and guarded
-   rollouts** ticked.
+Create these resources in order. Report a failure instead of substituting
+another value.
 
-   Do not ask the user to use **Add kind**. It is admin-only. Features →
-   Contexts is the instance list and cannot create kinds. The
-   context-kind API can set the checkbox. MCP has no kind tool.
+1. **Snippets:** Create every file in `seed/snippets/` at version 1, with
+   the body copied verbatim.
+2. **Configs:** Create `drummer`, `bassist`, and `keys`, followed by every
+   variation in the seed.
+3. **Variation contents:** Preserve the system-message order of persona,
+   mix discipline, then vocabulary. Include `gain_ceiling` and
+   `strict_gain_ceiling` exactly as printed. Do not interchange
+   `modelConfigKey` and `modelName`.
+4. **Targeting:** Reproduce every first-match-wins rule and fallthrough
+   from the seed. A new config serves nothing until its fallthrough points
+   to a real variation or rollout.
+5. **Flag:** Create the boolean `strict-mix-gate` flag. A new boolean flag
+   serves `true` when on, so change the default rule to `false` before
+   turning the flag **ON**. Do not start a guarded rollout.
 
-   If `request` is missing or the checkbox is off, **stop**. Ask the user
-   to run `npm run seed -- --verify` (needs real network to
-   `stream.launchdarkly.com`). That evaluation creates the kinds. Then
-   they tick **Available for experiments and guarded rollouts** on
-   `request` only. Creating AgentControl configs does **not** register
-   `request` as an experiment unit.
+## Pause: Register the request context
 
-   Only after that unit exists: `create-metric` for `peak-gain`,
-   `ceiling-breach-rate`, and `publish-success-rate` with
-   `randomizationUnits: ["request"]`. If the API says that unit is not
-   found, stop and fix the kind. Do not create the metrics without the
-   field. MCP defaults a missing field to `user`. There is no
-   `update-metric` tool.
+Do not create metrics until `request` exists and is marked **Available for
+experiments and guarded rollouts**.
 
-## Then verify
+If `request` is not ready:
+
+1. Ask the user to run `npm run seed -- --verify`. The SDK evaluations
+   create `musician`, `performance`, `listener`, and `request`.
+2. Wait for the command to exit 0.
+3. Ask the user to open **Code → Contexts → gear**, edit `request`, and
+   select **Available for experiments and guarded rollouts**.
+4. Wait for the user to confirm the setting.
+
+Do not send the user to **Add kind**. It is admin-only, and the Contexts
+list shows instances rather than creating kinds. The context-kind API can
+set the experiments field, but MCP has no context-kind tool.
+
+## Phase 2: Create the metrics
+
+After the user confirms that `request` is available, create:
+
+- `peak-gain`
+- `ceiling-breach-rate`
+- `publish-success-rate`
+
+Pass `randomizationUnits: ["request"]` for all three. If the API returns
+`Randomization unit "request" not found`, stop and have the user fix the
+context setting. Never omit the field: MCP otherwise defaults to `user`,
+and it has no `update-metric` tool.
+
+## Verify the result
 
 Ask the user to run:
 
