@@ -48,10 +48,11 @@ lie.
 
 ```bash
 npm install
-cp .env.example .env        # add ANTHROPIC_API_KEY and LAUNCHDARKLY_SDK_KEY
+cp .env.example .env        # ANTHROPIC_API_KEY, SDK key, LAUNCHDARKLY_PROJECT_KEY
 npm run seed                # print every LaunchDarkly resource this app needs
-#   Create the four context kinds in the UI, then /factory-bootstrap
-#   (or create the printed list by hand / via the other factory-* commands)
+#   /factory-bootstrap in a new project (LAUNCHDARKLY_PROJECT_KEY).
+#   If Add kind is disabled, kinds appear from --verify; tick
+#   Available for experiments on request before metrics.
 npm run seed -- --verify    # check what LaunchDarkly actually serves back
 npm start
 ```
@@ -70,17 +71,21 @@ this repo. Drive creation from the LaunchDarkly UI, or from the
 `.claude/commands/factory-*` slash commands over the LaunchDarkly MCP server,
 which uses OAuth.
 
-The fast path for a first run is `/factory-bootstrap`: create the four
-context kinds in the UI, then let the assistant create snippets, configs,
-metrics, targeting, and `strict-mix-gate` from the seed. That command is
-bootstrap only. Later prompt or flag changes still go through
-`/factory-classify` and a human, which is the argument of this repo.
+The fast path for a first run is a **new** project whose key is in
+`LAUNCHDARKLY_PROJECT_KEY`, then `/factory-bootstrap`. That command
+creates snippets, configs, targeting, and `strict-mix-gate` first. It
+creates metrics only after `request` is an experiment unit. Later prompt
+or flag changes still go through `/factory-classify` and a human.
 
 Work through the groups the seed output prints, in order.
 
-**1. Context kinds.** Create `musician`, `performance`, `listener`, and
-`request`. Tick **Available for experiments and guarded rollouts** on each one.
-A kind without it never appears in the rollout dialog, and nothing explains why.
+**1. Context kinds.** Features → Contexts is the instance list and cannot
+create kinds. **Code → Contexts → gear → Add kind** can, if you are an
+admin. Otherwise skip it: an SDK evaluation (`npm run seed -- --verify`
+or the app) creates `musician`, `performance`, `listener`, and `request`.
+Then tick **Available for experiments and guarded rollouts** on `request`
+before you create metrics. A kind without that checkbox never appears in
+the rollout dialog.
 
 **2. Prompt snippets.** All 17, each at version 1: three personas, three mix
 disciplines, and eleven vocabularies. The bodies are the files in
@@ -101,14 +106,15 @@ that deterministic targeting costs you.
 
 **5. Metrics.** Three of them: `peak-gain` (numeric, lower is better),
 `ceiling-breach-rate` (conversion, lower is better), and
-`publish-success-rate` (conversion, higher is better). Set the analysis unit to
-`request` on all three. If it does not match the rollout's randomization unit,
-the context kind will not appear in the rollout dialog and nothing will tell you
-why. This is the single most common place to get stuck.
+`publish-success-rate` (conversion, higher is better). Create them only
+after `request` is an experiment unit, and set the analysis unit to
+`request` on all three. Creating them without that field defaults the
+unit to `user`. There is no MCP `update-metric` tool.
 
-**6. Flags.** Create the boolean flag `strict-mix-gate`, serving `false`, then
-turn it **ON** so targeting applies. The application already evaluates this
-flag. Do not start a rollout until the band is playing.
+**6. Flags.** Create the boolean flag `strict-mix-gate`. `create-flag`
+defaults the on-variation to `true`; set the fallthrough to `false`, then
+turn it **ON**. Do not start a rollout until the band is playing, and do
+not burn in until the rollout is live.
 
 Then check what LaunchDarkly actually serves back:
 

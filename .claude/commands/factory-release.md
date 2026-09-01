@@ -6,11 +6,13 @@ description: Start a guarded rollout of a candidate variation on the rule that a
 
 ## Before you start — check these or the rollout will stall
 
-1. **Is a burn-in running?** A rollout step that is short of data does not
-   fail, it *waits* — and then may roll back for failing the minimum-context
-   requirement regardless of the guardrail. Live browser traffic is roughly
-   eleven generations a minute across the whole band, and a rollout on one
-   targeting rule sees only that rule's share of it.
+1. **Start the rollout, then the burn-in.** Traffic that finishes before
+   the rollout is live does not feed it. After the rollout exists, run
+   `npm run burn-in -- --state section=lift,energy=high,isBoundary=false
+   --generations 500`. A rollout step that is short of data does not
+   fail, it *waits*, and then may roll back for failing the
+   minimum-context requirement. Live browser traffic is roughly eleven
+   generations a minute and sees only one rule's share.
 2. **Is the burn-in pinned to the right rule?** `--state
    section=lift,energy=high,isBoundary=false` puts 100% of takes on the rule
    under test. Without it you may be generating thousands of contexts that
@@ -29,8 +31,12 @@ Use `start-guarded-rollout` with:
 - `stages` — custom `[{rolloutWeight, monitoringWindowMilliseconds}]`. Burn-in
   removes the data blocker; only short stages compress the *schedule*. These
   are two different things and conflating them is why a rollout looks stuck.
-- per-metric `onRegression: { notify: true, rollback: true }` on
-  `ceiling-breach-rate`
+- per-metric `onRegression: { notify: true, rollback: true }`
+- `regressionThreshold: 0` — the MCP schema requires the field. The API
+  rejects a real threshold with "regressionThreshold is not supported
+  and should be omitted." Send zero.
+- For the tutorial's code-change rollout on `strict-mix-gate`, the
+  guardrail is `publish-success-rate`, not `ceiling-breach-rate`.
 
 Put the rollout **on the targeting rule that already serves the baseline**, so
 the comparison is a candidate against its own control. A rollout that pits one

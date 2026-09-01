@@ -43,7 +43,12 @@ const warnings = problems.filter((p) => p.level === 'warn');
 
 heading('Seed material');
 console.log(`  ${material.snippets.size} snippets, ${material.variations.length} variations across ${Object.keys(material.configs.musicians).length} configs`);
-console.log(`  project: ${material.configs.projectKey}`);
+const targetProject =
+  process.env.LAUNCHDARKLY_PROJECT_KEY || material.configs.projectKey;
+console.log(`  seed default project: ${material.configs.projectKey}`);
+console.log(`  this run targets:     ${targetProject}${
+  process.env.LAUNCHDARKLY_PROJECT_KEY ? '' : '  (set LAUNCHDARKLY_PROJECT_KEY for a new project)'
+}`);
 
 if (warnings.length) {
   heading('Warnings');
@@ -58,9 +63,12 @@ if (errors.length) {
 }
 
 heading('1 · Context kinds');
-console.log('  Each needs "Available for experiments and guarded rollouts" TICKED.');
-console.log('  Without it the kind never appears in the rollout dialog and you will');
-console.log('  lose an afternoon to it.\n');
+console.log('  Features → Contexts is the instance list. Kinds are gear → Add kind');
+console.log('  (often admin-only) or they appear after an SDK evaluation.');
+console.log('  Tick "Available for experiments and guarded rollouts" on request');
+console.log('  BEFORE creating metrics. create-metric with randomizationUnits');
+console.log('  ["request"] fails until that unit exists. Omitting the field');
+console.log('  defaults the metric to user, and there is no update-metric tool.\n');
 for (const kind of material.configs.contextKinds) {
   console.log(`  ${kind.key.padEnd(12)} ${kind.name}`);
 }
@@ -98,9 +106,8 @@ for (const [musician, spec] of Object.entries(material.configs.musicians)) {
 }
 
 heading('5 · Metrics');
-console.log('  Analysis unit must be "request" on all three, matching the randomization');
-console.log('  unit used by the rollout. If they disagree, the context kind will not');
-console.log('  appear in the rollout dialog.\n');
+console.log('  Create these AFTER request is an experiment unit. Analysis unit');
+console.log('  must be "request" on all three, matching the rollout.\n');
 for (const metric of material.configs.metrics) {
   console.log(`  ${metric.key.padEnd(22)} ${metric.kind.padEnd(11)} ${metric.successCriteria}`);
 }
@@ -116,9 +123,10 @@ if (args.has('--verify')) {
   await verify(material);
 } else {
   heading('Next');
-  console.log('  Fast path: create the four context kinds in the UI, then run');
-  console.log('  /factory-bootstrap in an assistant connected to the LaunchDarkly');
-  console.log('  MCP server. Or create the resources above by hand.\n');
+  console.log('  Fast path: set LAUNCHDARKLY_PROJECT_KEY to a new project, then');
+  console.log('  /factory-bootstrap. If Add kind is disabled, let bootstrap create');
+  console.log('  configs first, run --verify so the kinds appear, tick Available');
+  console.log('  for experiments on request, then create the metrics.\n');
   console.log('  Then check what LaunchDarkly actually serves back:\n');
   console.log('      npm run seed -- --verify\n');
 }

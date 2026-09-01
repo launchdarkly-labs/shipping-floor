@@ -18,15 +18,18 @@ bodies, parameters, or targeting clauses.
 
 ## Before you create anything
 
-1. Confirm the project key. Default is `shipping-floor`. If the user named
-   their project something else, use that key everywhere.
-2. Confirm the four context kinds exist **in the UI**: `musician`,
-   `performance`, `listener`, and `request`. Each must have **Available for
-   experiments and guarded rollouts** ticked. The context-kind API cannot set
-   that checkbox. If any kind is missing, stop and tell the user to create it
-   before you continue.
+1. Read the project key from `.env` (`LAUNCHDARKLY_PROJECT_KEY`) or ask the
+   user for the key of the project they **just created**. Use that key
+   everywhere. Do not default to `shipping-floor`. Do not write into a
+   project that already has `drummer`, `bassist`, or `keys` configs unless
+   the user confirms they want to reuse it.
+2. Probe the MCP with `list-projects` before any write. A successful
+   auth helper is not enough if the next call returns `token_expired`.
+   In Cursor, production writes sit behind an approval card. Retry after
+   the user approves. That is bootstrap, not a customer rollout.
 3. Run `npm run seed` and keep that output. It is the spec. Create exactly
-   what it prints.
+   what it prints. The line `seed default project: shipping-floor` is the
+   seed file. The line `this run targets:` is the project you write to.
 
 ## Create, in this order
 
@@ -46,13 +49,31 @@ Report anything you could not create rather than substituting a value.
    Set each config's fallthrough to the variation or percentage rollout the
    seed names. A new config serves nothing until the fallthrough points at a
    real variation.
-4. **Metrics.** `create-metric` for `peak-gain`, `ceiling-breach-rate`, and
-   `publish-success-rate`. Set the analysis unit to `request` on all three.
-   If that unit does not match the rollout's randomization unit, the kind
-   never appears in the rollout dialog.
-5. **Flag.** `create-flag` for `strict-mix-gate`, kind `boolean`. Then
-   `toggle-flag` to turn it **ON** so targeting applies. Leave it serving
-   `false`. Do not start a guarded rollout.
+4. **Flag.** `create-flag` for `strict-mix-gate`, kind `boolean`. The
+   default on-variation is `true`. `update-rollout` (or the equivalent
+   fallthrough update) so the default rule serves `false`, then
+   `toggle-flag` **ON**. Do not start a guarded rollout.
+5. **Kinds, then metrics.** Do not create metrics yet unless `request`
+   already exists and has **Available for experiments and guarded
+   rollouts** ticked.
+
+   Features → Contexts is the instance list and cannot create kinds.
+   Kinds are **Code → Contexts → gear → Add kind** (often admin-only) or
+   they appear after an SDK evaluation. The context-kind API can set the
+   checkbox. MCP has no kind tool.
+
+   If `request` is missing or the checkbox is off, **stop**. Ask the user
+   to run `npm run seed -- --verify` (needs real network to
+   `stream.launchdarkly.com`). That evaluation creates the kinds. Then
+   they tick the checkbox on `request` in the UI. Creating AgentControl
+   configs does **not** register `request` as an experiment unit.
+
+   Only after that unit exists: `create-metric` for `peak-gain`,
+   `ceiling-breach-rate`, and `publish-success-rate` with
+   `randomizationUnits: ["request"]`. If the API says that unit is not
+   found, stop and fix the kind. Do not create the metrics without the
+   field. MCP defaults a missing field to `user`. There is no
+   `update-metric` tool.
 
 ## Then verify
 
@@ -63,13 +84,15 @@ npm run seed -- --verify
 ```
 
 That evaluates every config through the SDK and checks that
-`strict-mix-gate` is serving `false`. If it fails, fix the missing
-resource. Do not tell them to start the app until it exits 0.
+`strict-mix-gate` is serving `false`. It must reach
+`stream.launchdarkly.com`; a sandbox DNS failure is not a seed bug. If it
+fails, fix the missing resource. Do not tell them to start the app until
+it exits 0.
 
 ## What you are not doing
 
 - You are not editing application code. `strict-mix-gate` is already
   evaluated in `src/validate.js`.
-- You are not starting a rollout. `/factory-release` does that, after the
-  band is playing and burn-in is running.
+- You are not starting a rollout. `/factory-release` does that after the
+  band is playing. Burn-in runs **after** the rollout is live.
 - You are not cleaning up. `/factory-cleanup` is a later, separate step.
