@@ -63,8 +63,8 @@ if (errors.length) {
 }
 
 heading('1 · Context kinds');
-console.log('  Features → Contexts is the instance list. Kinds are gear → Add kind');
-console.log('  (often admin-only) or they appear after an SDK evaluation.');
+console.log('  Do not use Add kind (admin-only). Features → Contexts is the');
+console.log('  instance list. Kinds appear after an SDK evaluation (--verify).');
 console.log('  Tick "Available for experiments and guarded rollouts" on request');
 console.log('  BEFORE creating metrics. create-metric with randomizationUnits');
 console.log('  ["request"] fails until that unit exists. Omitting the field');
@@ -124,9 +124,9 @@ if (args.has('--verify')) {
 } else {
   heading('Next');
   console.log('  Fast path: set LAUNCHDARKLY_PROJECT_KEY to a new project, then');
-  console.log('  /factory-bootstrap. If Add kind is disabled, let bootstrap create');
-  console.log('  configs first, run --verify so the kinds appear, tick Available');
-  console.log('  for experiments on request, then create the metrics.\n');
+  console.log('  /factory-bootstrap. That creates configs first. Run --verify so');
+  console.log('  the kinds appear, tick Available for experiments on request,');
+  console.log('  then create the metrics. Do not start at Add kind.\n');
   console.log('  Then check what LaunchDarkly actually serves back:\n');
   console.log('      npm run seed -- --verify\n');
 }

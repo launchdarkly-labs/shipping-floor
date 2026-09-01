@@ -51,8 +51,8 @@ npm install
 cp .env.example .env        # ANTHROPIC_API_KEY, SDK key, LAUNCHDARKLY_PROJECT_KEY
 npm run seed                # print every LaunchDarkly resource this app needs
 #   /factory-bootstrap in a new project (LAUNCHDARKLY_PROJECT_KEY).
-#   If Add kind is disabled, kinds appear from --verify; tick
-#   Available for experiments on request before metrics.
+#   Kinds appear from --verify. Tick Available for experiments on
+#   request before metrics. Do not start at Add kind.
 npm run seed -- --verify    # check what LaunchDarkly actually serves back
 npm start
 ```
@@ -79,13 +79,13 @@ or flag changes still go through `/factory-classify` and a human.
 
 Work through the groups the seed output prints, in order.
 
-**1. Context kinds.** Features → Contexts is the instance list and cannot
-create kinds. **Code → Contexts → gear → Add kind** can, if you are an
-admin. Otherwise skip it: an SDK evaluation (`npm run seed -- --verify`
-or the app) creates `musician`, `performance`, `listener`, and `request`.
-Then tick **Available for experiments and guarded rollouts** on `request`
-before you create metrics. A kind without that checkbox never appears in
-the rollout dialog.
+**1. Context kinds.** Do not start at **Add kind**. It is admin-only.
+Features → Contexts is the instance list. An SDK evaluation
+(`npm run seed -- --verify` or the app) creates `musician`,
+`performance`, `listener`, and `request`. Then tick **Available for
+experiments and guarded rollouts** on `request` before you create
+metrics. The other three kinds do not need that checkbox for this
+rollout.
 
 **2. Prompt snippets.** All 17, each at version 1: three personas, three mix
 disciplines, and eleven vocabularies. The bodies are the files in

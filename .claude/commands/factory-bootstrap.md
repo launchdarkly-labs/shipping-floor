@@ -57,16 +57,16 @@ Report anything you could not create rather than substituting a value.
    already exists and has **Available for experiments and guarded
    rollouts** ticked.
 
-   Features → Contexts is the instance list and cannot create kinds.
-   Kinds are **Code → Contexts → gear → Add kind** (often admin-only) or
-   they appear after an SDK evaluation. The context-kind API can set the
-   checkbox. MCP has no kind tool.
+   Do not ask the user to use **Add kind**. It is admin-only. Features →
+   Contexts is the instance list and cannot create kinds. The
+   context-kind API can set the checkbox. MCP has no kind tool.
 
    If `request` is missing or the checkbox is off, **stop**. Ask the user
    to run `npm run seed -- --verify` (needs real network to
    `stream.launchdarkly.com`). That evaluation creates the kinds. Then
-   they tick the checkbox on `request` in the UI. Creating AgentControl
-   configs does **not** register `request` as an experiment unit.
+   they tick **Available for experiments and guarded rollouts** on
+   `request` only. Creating AgentControl configs does **not** register
+   `request` as an experiment unit.
 
    Only after that unit exists: `create-metric` for `peak-gain`,
    `ceiling-breach-rate`, and `publish-success-rate` with
