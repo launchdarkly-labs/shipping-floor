@@ -6,6 +6,8 @@
     "human-gated step you drive from the dashboard or the .claude/commands/factory-*",
     "slash commands over the LaunchDarkly MCP server, which authenticates with OAuth",
     "and needs no write-scoped API token checked into a public repo.",
+    "/factory-bootstrap creates this whole list once so a tutorial reader can",
+    "start at Play. Later changes still go through /factory-classify and a human.",
     "",
     "Two axes, and keeping them apart is what makes a guarded rollout mean anything:",
     "  Axis A — WHICH groove. One variation per groove, selected by TARGETING.",
@@ -85,6 +87,16 @@
       "successCriteria": "HigherThanBaseline",
       "randomizationUnits": ["request"],
       "description": "Did this generation reach the speakers at all. The guardrail for the strict-mix-gate CODE change: a gate that is too strict does not sound bad, it makes the band freeze — nothing new arrives. Higher is better."
+    }
+  ],
+
+  "flags": [
+    {
+      "key": "strict-mix-gate",
+      "name": "Strict mix gate",
+      "kind": "boolean",
+      "default": false,
+      "description": "When true, the validator uses strict_gain_ceiling instead of gain_ceiling. The code-change unit of the tutorial. Create it serving false, then turn the flag ON so targeting applies. Do not start a rollout here."
     }
   ],
 

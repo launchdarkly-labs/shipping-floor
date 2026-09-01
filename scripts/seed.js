@@ -7,13 +7,12 @@ import { loadSeedMaterial, validateSeedMaterial, SEED_VERSION } from '../src/see
  *
  * This script deliberately does NOT write to LaunchDarkly.
  *
- * Creating these resources is human-gated on purpose — the whole argument of
- * this repo is that someone reviews a proposed prompt change before it ships.
- * Automating it would also mean a write-scoped LAUNCHDARKLY_API_TOKEN living
- * in a public tutorial repo, which is a footgun. Drive the mutations from the
- * LaunchDarkly UI, or from the .claude/commands/factory-* slash commands
- * over the LaunchDarkly MCP server,
- * which authenticates with OAuth and has nothing to rotate.
+ * Creating these resources is driven from the LaunchDarkly UI or the
+ * `.claude/commands/factory-*` slash commands over the LaunchDarkly MCP
+ * server, which authenticates with OAuth. There is no write-scoped
+ * LAUNCHDARKLY_API_TOKEN in this repo. `/factory-bootstrap` creates the
+ * seed list once so a first run can start at Play. Later prompt changes
+ * still go through `/factory-classify` and a human.
  *
  * What this script IS good for: catching the mistakes that are expensive to
  * discover later — a snippet the targeting never serves, rollout weights that
@@ -106,12 +105,21 @@ for (const metric of material.configs.metrics) {
   console.log(`  ${metric.key.padEnd(22)} ${metric.kind.padEnd(11)} ${metric.successCriteria}`);
 }
 
+heading('6 · Flags');
+console.log('  Boolean flags the application already evaluates. Create each one');
+console.log('  serving its default, then turn it ON so targeting applies.\n');
+for (const flag of material.configs.flags ?? []) {
+  console.log(`  ${flag.key.padEnd(22)} default ${flag.default}  ${flag.description}`);
+}
+
 if (args.has('--verify')) {
   await verify(material);
 } else {
   heading('Next');
-  console.log('  Create the resources above, then re-run with --verify to check what');
-  console.log('  LaunchDarkly actually serves back:\n');
+  console.log('  Fast path: create the four context kinds in the UI, then run');
+  console.log('  /factory-bootstrap in an assistant connected to the LaunchDarkly');
+  console.log('  MCP server. Or create the resources above by hand.\n');
+  console.log('  Then check what LaunchDarkly actually serves back:\n');
   console.log('      npm run seed -- --verify\n');
 }
 
@@ -169,6 +177,19 @@ async function verify(material) {
       }
       const snippets = (config.snippets ?? []).map((s) => `${s.key}#${s.version}`).join(', ');
       console.log(`  ✓ ${label.padEnd(34)} ${config.variationKey} v${config.variationVersion} · ceiling ${config.gainCeiling} · ${snippets || 'no snippet declaration'}`);
+    }
+  }
+
+  const flagContext = provider.buildContext('drummer', SCENARIOS[0].state);
+  for (const flag of material.configs.flags ?? []) {
+    // Default true on purpose: a missing flag returns the default, so false
+    // here means LaunchDarkly actually served the off variation.
+    const served = await provider.boolFlag(flag.key, flagContext, true);
+    if (served !== flag.default) {
+      console.log(`  ✗ ${flag.key.padEnd(34)} served ${served}; expected ${flag.default} (missing or already rolling out)`);
+      failures += 1;
+    } else {
+      console.log(`  ✓ ${flag.key.padEnd(34)} serving ${served}`);
     }
   }
 

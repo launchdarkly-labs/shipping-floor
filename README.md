@@ -50,7 +50,8 @@ lie.
 npm install
 cp .env.example .env        # add ANTHROPIC_API_KEY and LAUNCHDARKLY_SDK_KEY
 npm run seed                # print every LaunchDarkly resource this app needs
-#   ... create them in the LaunchDarkly UI, or via .claude/commands/factory-* ...
+#   Create the four context kinds in the UI, then /factory-bootstrap
+#   (or create the printed list by hand / via the other factory-* commands)
 npm run seed -- --verify    # check what LaunchDarkly actually serves back
 npm start
 ```
@@ -64,14 +65,18 @@ is the worst possible failure mode, so this one is loud.
 ## Set up the LaunchDarkly project
 
 `npm run seed` prints every resource this app expects and validates the local
-seed material. It creates nothing. That is deliberate: the argument of this repo
-is that a human reviews a proposed change before it ships, and a script that
-silently provisions production would undercut it on page one. It also means no
-write-scoped API token has to exist. Create the resources in the LaunchDarkly UI
-with your own login, or drive them through the `.claude/commands/factory-*`
-slash commands over the LaunchDarkly MCP server, which uses OAuth.
+seed material. It creates nothing. A write-scoped API token does not belong in
+this repo. Drive creation from the LaunchDarkly UI, or from the
+`.claude/commands/factory-*` slash commands over the LaunchDarkly MCP server,
+which uses OAuth.
 
-Work through the five groups the seed output prints, in order.
+The fast path for a first run is `/factory-bootstrap`: create the four
+context kinds in the UI, then let the assistant create snippets, configs,
+metrics, targeting, and `strict-mix-gate` from the seed. That command is
+bootstrap only. Later prompt or flag changes still go through
+`/factory-classify` and a human, which is the argument of this repo.
+
+Work through the groups the seed output prints, in order.
 
 **1. Context kinds.** Create `musician`, `performance`, `listener`, and
 `request`. Tick **Available for experiments and guarded rollouts** on each one.
@@ -101,8 +106,9 @@ that deterministic targeting costs you.
 the context kind will not appear in the rollout dialog and nothing will tell you
 why. This is the single most common place to get stuck.
 
-For the code-change rollout, also create a boolean flag called
-`strict-mix-gate`, serving `false` by default.
+**6. Flags.** Create the boolean flag `strict-mix-gate`, serving `false`, then
+turn it **ON** so targeting applies. The application already evaluates this
+flag. Do not start a rollout until the band is playing.
 
 Then check what LaunchDarkly actually serves back:
 
