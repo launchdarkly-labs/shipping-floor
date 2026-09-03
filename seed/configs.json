@@ -86,7 +86,7 @@
       "kind": "conversion",
       "successCriteria": "HigherThanBaseline",
       "randomizationUnits": ["request"],
-      "description": "Did this generation reach the speakers at all. The guardrail for the strict-mix-gate CODE change: a gate that is too strict does not sound bad, it makes the band freeze — nothing new arrives. Higher is better."
+      "description": "Did this generation reach the speakers at all. The guardrail for the strict-mix-gate CODE change: a gate that is too strict does not sound bad, it makes an instrument stop evolving while the others cover for it. Higher is better."
     }
   ],
 
@@ -112,7 +112,8 @@
         "which is where the ceiling and the ratchet both live, so both attempts",
         "fail and hold-last-known-good takes over: 28 generations, 0 published,",
         "28 held. That is the point of the chapter — a gate that is too strict",
-        "does not sound bad, it makes the band stop evolving."
+        "does not sound bad, it makes the drummer stop evolving while the bassist",
+        "and keys keep publishing, so the band-level rate only falls partway."
       ],
       "strictGainCeiling": 0.6,
       "maxTokens": 500,

@@ -136,6 +136,14 @@ export class Musician {
 
     const config = await this.configProvider.getMusicianConfig(this.name, context);
 
+    // Read the gate arm here rather than just before the lint, so the `config`
+    // event can report the ceiling actually being ENFORCED. Reporting the
+    // variation's nominal ceiling while strict-mix-gate enforces a tighter one
+    // makes the HUD lie during exactly the rollout it exists to explain.
+    const strictMixGate = await this.configProvider.boolFlag(FLAG_STRICT_MIX_GATE, context, false);
+    const enforcedCeiling =
+      strictMixGate && config.strictGainCeiling != null ? config.strictGainCeiling : config.gainCeiling;
+
     this.onEvent({
       musician: this.name,
       event: 'config',
@@ -147,6 +155,8 @@ export class Musician {
       variationVersion: config.variationVersion ?? null,
       snippets: config.snippets ?? [],
       gainCeiling: config.gainCeiling ?? null,
+      strictMixGate,
+      enforcedCeiling: enforcedCeiling ?? null,
       reason: config.reason ?? null,
       context: describeContext(context),
     });
@@ -178,7 +188,6 @@ export class Musician {
       return;
     }
 
-    const strictMixGate = await this.configProvider.boolFlag(FLAG_STRICT_MIX_GATE, context, false);
     const lintOptions = {
       gainCeiling: config.gainCeiling,
       strictGainCeiling: config.strictGainCeiling,

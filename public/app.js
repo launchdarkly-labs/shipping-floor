@@ -1,7 +1,8 @@
 import { AGENTS, $, setText, setFlag, safeUrl } from './lib/dom.js';
+import { publishRate, formatRate } from './lib/rates.js';
 import { store, onEvent } from './state/store.js';
 import { connect } from './net/socket.js';
-import { setupStrudel, start, stop, getCps } from './audio/strudel.js';
+import { setupStrudel, start, stop } from './audio/strudel.js';
 import { mountAgents } from './ui/agents.js';
 import { mountTower } from './ui/tower.js';
 import { mountLine } from './ui/line.js';
@@ -54,10 +55,7 @@ function boot() {
 function renderChrome() {
   setText($('section-value'), store.meta.section);
   setText($('energy-value'), store.meta.energy);
-  setText($('key-value'), store.meta.key);
   setText($('cycle-value'), store.meta.cycle);
-  setText($('tempo-value'), `${getCps()} cps`);
-  setText($('listener-value'), store.meta.listener?.audience);
 
   const conn = $('conn');
   setText(conn, store.connected ? 'orchestrator connected' : 'reconnecting…');
@@ -78,12 +76,13 @@ function renderChrome() {
   renderLdBar();
 
   const totals = store.totals();
+  // Band-wide publish rate, first, because it is the guardrail that decides
+  // the code change and the one failure you cannot hear.
+  setText($('ledger-publish-rate'), formatRate(publishRate(totals)));
   setText($('ledger-generations'), totals.generations);
   setText($('ledger-published'), totals.published);
   setText($('ledger-rejected'), totals.lintRejected + totals.parseRejected);
-  setText($('ledger-breaches'), totals.ceilingBreaches);
   setText($('ledger-held'), totals.keptPrevious);
-  setText($('ledger-retries'), totals.retries);
 }
 
 /**

@@ -11,7 +11,8 @@ version of its part.
 The point is not the music. The point is what the loop already was:
 
 ```
-generate → gate → deploy → roll back
+per generation:  generate → gate → deploy → hold last good
+per change:      guarded rollout → metric verdict → revert
 ```
 
 An agent produces an artifact (a Strudel pattern — that *is* code). A lint
@@ -19,6 +20,11 @@ gates it. The browser's real parser gates it again. It deploys at the next
 cycle boundary. On failure the previous pattern keeps looping. That is a
 factory running eleven times a minute that nobody called a factory — and until
 now, it was **completely unmeasured**.
+
+The two lines run on different clocks, and only the first one is a gate. The
+second never inspects a pattern and cannot stop one from playing; it decides
+whether a *change* is allowed to keep going, and takes it back when the
+measurement says no. That line is what this repo adds.
 
 Its gate caught syntax but not taste. It could not catch a pattern that parses
 perfectly and is 12 dB too loud. That gap is what this repo is about, and you

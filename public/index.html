@@ -59,6 +59,7 @@
         <div class="row"><code>variation</code><span class="value" id="tower-variation">—</span></div>
         <div class="row"><code>model</code><span class="value" id="tower-model">—</span></div>
         <div class="row"><code>contexts</code><span class="value" id="tower-contexts">—</span></div>
+        <div class="row"><code>strict-mix-gate</code><span class="value" id="tower-gate">—</span></div>
         <p class="reason" id="tower-reason">—</p>
         <a class="edit" id="tower-edit" target="_blank" rel="noopener" hidden>edit in LaunchDarkly ↗</a>
       </section>
@@ -71,16 +72,23 @@
 
       <section class="panel">
         <h3>Guardrails</h3>
+        <!--
+          The two tiles on top are the two rollout guardrails, as RATES, in the
+          same direction LaunchDarkly reads them. The counts underneath are the
+          raw material they are computed from. A tile per counter read as six
+          equal numbers and buried the two that decide a release.
+        -->
+        <div class="tiles tiles-metric">
+          <div class="tile"><span class="tile-label">publish rate</span><span class="tile-value" id="tower-publish-rate">—</span></div>
+          <div class="tile"><span class="tile-label">breach rate</span><span class="tile-value" id="tower-breach-rate">—</span></div>
+        </div>
         <div class="tiles">
-          <div class="tile"><span class="tile-label">peak gain</span><span class="tile-value" id="tower-gain">—</span></div>
-          <div class="tile"><span class="tile-label">ceiling</span><span class="tile-value" id="tower-ceiling">—</span></div>
-          <div class="tile"><span class="tile-label">breaches</span><span class="tile-value" id="tower-breaches">0</span></div>
-          <div class="tile"><span class="tile-label">held</span><span class="tile-value" id="tower-held">0</span></div>
-          <div class="tile"><span class="tile-label">published</span><span class="tile-value" id="tower-published">0</span></div>
-          <div class="tile">
-            <span class="tile-label">mix discipline</span>
-            <span class="tile-value"><span id="tower-gain-glyph"></span> <span id="tower-gain-word">within</span></span>
+          <div class="tile tile-wide">
+            <span class="tile-label">peak gain / enforced ceiling</span>
+            <span class="tile-value"><span id="tower-gain">—</span> / <span id="tower-ceiling">—</span> <span id="tower-gain-glyph"></span> <span class="tile-word" id="tower-gain-word">within</span></span>
           </div>
+          <div class="tile"><span class="tile-label">published · held</span><span class="tile-value"><span id="tower-published">0</span> · <span id="tower-held">0</span></span></div>
+          <div class="tile"><span class="tile-label">breaches</span><span class="tile-value" id="tower-breaches">0</span></div>
         </div>
         <svg class="spark" id="tower-spark" aria-hidden="true"></svg>
       </section>
@@ -104,20 +112,23 @@
   <div class="transport">
     <button id="play">▶ Play</button>
     <button id="motion">motion: full</button>
+    <!--
+      Section, energy, and cycle only. Those are the three the story uses: the
+      first two are what `npm run burn-in --state` pins to put every take on
+      one targeting rule, and the third is when a pattern deploys. Key, tempo,
+      and listener were true and never load-bearing.
+    -->
     <div class="stat"><span class="label">Section</span><span class="value" id="section-value">—</span></div>
     <div class="stat"><span class="label">Energy</span><span class="value" id="energy-value">—</span></div>
-    <div class="stat"><span class="label">Key</span><span class="value" id="key-value">—</span></div>
-    <div class="stat"><span class="label">Tempo</span><span class="value" id="tempo-value">—</span></div>
     <div class="stat"><span class="label">Cycle</span><span class="value" id="cycle-value">0</span></div>
-    <div class="stat"><span class="label">Listener</span><span class="value" id="listener-value">—</span></div>
 
+    <!-- Band-wide, and the rate first: the tower shows one agent, this is all three. -->
     <div class="ledger" aria-label="Factory ledger">
+      <span><b id="ledger-publish-rate">—</b> publish rate</span>
       <span><b id="ledger-generations">0</b> generated</span>
       <span><b id="ledger-published">0</b> shipped</span>
       <span><b id="ledger-rejected">0</b> rejected</span>
-      <span><b id="ledger-breaches">0</b> breaches</span>
       <span><b id="ledger-held">0</b> held</span>
-      <span><b id="ledger-retries">0</b> retries</span>
     </div>
   </div>
 

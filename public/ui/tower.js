@@ -1,4 +1,5 @@
 import { $, setText, setFlag, setLink, formatGain } from '../lib/dom.js';
+import { publishRate, breachRate, formatRate } from '../lib/rates.js';
 import { store } from '../state/store.js';
 import { describeReason, describeServing } from './reasons.js';
 
@@ -26,6 +27,10 @@ export function mountTower() {
     snippets: $('tower-snippets'),
     promptFooter: $('tower-prompt-footer'),
 
+    gate: $('tower-gate'),
+
+    publishRate: $('tower-publish-rate'),
+    breachRate: $('tower-breach-rate'),
     gain: $('tower-gain'),
     ceiling: $('tower-ceiling'),
     breaches: $('tower-breaches'),
@@ -48,6 +53,10 @@ export function mountTower() {
       setFlag(ui.variation, 'alarm', serving.alarm);
       setText(ui.model, info.model);
       setText(ui.contexts, info.context ? Object.values(info.context).join(' · ') : null);
+      // Which arm of the code change this agent last ran under. Without it the
+      // ceiling below is unexplained: the reader sees a limit they never set.
+      setText(ui.gate, info.strictMixGate == null ? null : info.strictMixGate ? 'true · strict' : 'false');
+      setFlag(ui.gate, 'alarm', Boolean(info.strictMixGate));
       setText(ui.reason, describeReason(selected, info.reason));
       setLink(ui.edit, info.configUrl);
 
@@ -64,7 +73,13 @@ export function mountTower() {
 
       // ---- GUARDRAILS ----------------------------------------------------
       const ledger = info.ledger ?? {};
-      const ceiling = info.gainCeiling;
+      // The ENFORCED ceiling, which is the strict one whenever strict-mix-gate
+      // is on. Showing the variation's nominal ceiling here made the HUD
+      // disagree with the validator during the one rollout it exists to
+      // explain, and made a legitimate rejection look like a bug.
+      const ceiling = info.enforcedCeiling ?? info.gainCeiling;
+      setText(ui.publishRate, formatRate(publishRate(ledger)));
+      setText(ui.breachRate, formatRate(breachRate(ledger)));
       setText(ui.gain, formatGain(info.gain));
       setText(ui.ceiling, ceiling == null ? '—' : ceiling.toFixed(2));
       setText(ui.breaches, ledger.ceilingBreaches ?? 0);

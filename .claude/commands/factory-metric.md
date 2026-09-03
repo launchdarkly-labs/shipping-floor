@@ -13,7 +13,7 @@ on a small number of things a reader can hold in their head.
 |---|---|---|---|
 | `peak-gain` | numeric value | lower is better | The loudness number. The distribution matters, not just breaches |
 | `ceiling-breach-rate` | conversion | lower is better | **The rollout guardrail** for a prompt change |
-| `publish-success-rate` | conversion | higher is better | The guardrail for a **code** change — a too-strict gate does not sound bad, it makes the band freeze |
+| `publish-success-rate` | conversion | higher is better | The guardrail for a **code** change — a too-strict gate does not sound bad, it makes an instrument stop evolving while the others cover for it |
 
 ## Steps
 

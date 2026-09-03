@@ -88,6 +88,8 @@ async function main() {
               : null,
             snippets: entry.snippets,
             gainCeiling: entry.gainCeiling,
+            strictMixGate: entry.strictMixGate,
+            enforcedCeiling: entry.enforcedCeiling,
             reason: entry.reason,
             context: entry.context,
           });
