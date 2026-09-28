@@ -16,8 +16,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.57.0",
+    "@launchdarkly/ai-server": "0.3.0",
     "@launchdarkly/node-server-sdk": "^9.13.0",
-    "@launchdarkly/server-sdk-ai": "^0.20.0",
     "ws": "^8.18.0"
   }
 }

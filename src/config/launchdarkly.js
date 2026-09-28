@@ -1,13 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { init } from '@launchdarkly/node-server-sdk';
-import { initAi } from '@launchdarkly/server-sdk-ai';
+import { config as aiConfig, createHandler, initClient, inspectConfig, parseTemplate } from '@launchdarkly/ai-server';
 import { ConfigProvider } from './provider.js';
+import { generatePattern } from '../llm.js';
 import { parseSnippetDeclaration } from '../seed-material.js';
 
-const NOOP_TRACKER = {
-  async trackMetricsOf(_extract, call) { return call(); },
-  trackFeedback() {},
-  getTrackData() { return { variationKey: '', version: 0, modelName: null }; },
+/**
+ * The AI SDK has no feedback API, so these are emitted directly. The keys are
+ * byte-identical to the ones the previous SDK sent, or the existing feedback
+ * metrics would stop receiving data.
+ */
+const FEEDBACK_EVENTS = {
+  positive: '$ld:ai:feedback:user:positive',
+  negative: '$ld:ai:feedback:user:negative',
 };
 
 /**
@@ -59,13 +64,18 @@ export class LaunchDarklyConfigProvider extends ConfigProvider {
     this.projectKey = projectKey;
     this.appBaseUrl = appBaseUrl;
     this.explain = explain;
+    // The node client is still built here and handed to the AI SDK, rather
+    // than letting it construct its own. This provider calls track(),
+    // variation(), and variationDetail() directly, and those need the same
+    // client the AI calls evaluate against.
     this.ldClient = init(sdkKey);
-    this.aiClient = null;
+    this.aiReady = false;
     this.initError = null;
     this.ready = this.ldClient
       .waitForInitialization({ timeout: 10 })
-      .then(() => {
-        this.aiClient = initAi(this.ldClient);
+      .then(async () => {
+        await initClient(this.ldClient);
+        this.aiReady = true;
       })
       .catch((error) => {
         this.initError = String(error?.message ?? error);
@@ -118,7 +128,7 @@ export class LaunchDarklyConfigProvider extends ConfigProvider {
     const configUrl = `${this.appBaseUrl}/projects/${this.projectKey}/ai-configs/${configKey}`;
     const base = { source: 'launchdarkly', configKey, configUrl };
 
-    if (!this.aiClient) {
+    if (!this.aiReady) {
       return {
         ...base,
         enabled: false,
@@ -129,34 +139,37 @@ export class LaunchDarklyConfigProvider extends ConfigProvider {
         systemBase: '',
         snippets: [],
         variationKey: '',
-        createTracker: () => NOOP_TRACKER,
       };
     }
 
     const ldContext = context ?? this.buildContext(musician);
-    const cfg = await this.aiClient.completionConfig(configKey, ldContext, undefined, buildVariables(context));
 
-    if (!cfg.enabled) {
+    // inspectConfig reads the variation WITHOUT invoking a model or emitting
+    // any events, which is what this method wants: the caller decides whether
+    // the take is playable before anything is spent. The generation itself
+    // goes through generate() below.
+    const { enabled, config: cfg, meta } = await inspectConfig(configKey, ldContext);
+
+    if (!enabled || !cfg) {
       return {
         ...base,
         enabled: false,
         valid: false,
         invalidReason: 'config is toggled off in LaunchDarkly',
         source: 'launchdarkly (disabled)',
-        model: { name: cfg.model?.name ?? null, parameters: cfg.model?.parameters ?? {} },
+        model: { name: cfg?.model?.name ?? null, parameters: cfg?.model?.parameters ?? {} },
         systemBase: '',
         snippets: [],
         variationKey: '',
-        createTracker: () => NOOP_TRACKER,
       };
     }
 
-    // The AI SDK exposes the served variation for free on any tracker. An
-    // EMPTY variationKey is the single most important signal in the whole
-    // system: it means no flag evaluation happened and the SDK served its own
-    // default, i.e. LaunchDarkly is not actually driving this musician.
-    const probe = cfg.createTracker();
-    const trackData = probe.getTrackData();
+    // The served variation now comes from public variation metadata rather
+    // than off a tracker. An EMPTY variationKey is still the single most
+    // important signal in the whole system: it means no flag evaluation
+    // happened and a default was served, i.e. LaunchDarkly is not actually
+    // driving this musician.
+    const trackData = meta ?? {};
 
     // Snippet composition, recovered. LaunchDarkly strips the keys and
     // versions when it inlines snippet text, so the FIRST system message is
@@ -164,7 +177,12 @@ export class LaunchDarklyConfigProvider extends ConfigProvider {
     // message carries a `snippets:` self-declaration that we parse here and
     // never send to the model.
     const systemMessages = (cfg.messages ?? []).filter((m) => m.role === 'system');
-    const systemBase = systemMessages[0]?.content ?? '';
+    // Rendered here, not by the SDK. The previous SDK ran every message
+    // through Mustache before handing it over; this one forwards `variables`
+    // untouched and leaves rendering to the caller. Without this the
+    // unresolved-template check below would reject every variation that
+    // interpolates {{section}} or {{energy}}.
+    const systemBase = parseTemplate(systemMessages[0]?.content ?? '', buildVariables(context));
     const snippets = parseSnippetDeclaration(systemMessages[1]?.content) ?? [];
 
     // `gain_ceiling` and `strict_gain_ceiling` live in model.parameters so
@@ -189,12 +207,84 @@ export class LaunchDarklyConfigProvider extends ConfigProvider {
       variationKey: trackData.variationKey ?? '',
       variationVersion: trackData.version,
       reason: await this.#explain(configKey, ldContext),
-      // A fresh tracker PER ATTEMPT, not per turn. Each carries its own runId,
-      // and a retry genuinely is a separate execution of the model — tracking
-      // only the first attempt is how "100% of spend is tracked" quietly
-      // becomes false.
-      createTracker: () => cfg.createTracker(),
     };
+  }
+
+  /**
+   * Run one generation attempt and let the SDK record it.
+   *
+   * There is no tracker to create any more, and the SDK does not export a way
+   * to track a call against a config you already hold, so the model call has
+   * to happen inside a handler that `invoke()` drives. Each invoke() is its
+   * own execution with its own runId, which keeps the property the old
+   * per-attempt tracker existed for: a retry is tracked as a separate
+   * execution, so "100% of spend is tracked" stays true.
+   *
+   * The prompt checks run in here rather than in the caller, against the
+   * config the SDK actually served for this attempt. Throwing is what refuses
+   * the take, and it also makes the SDK record a generation error — correct,
+   * because a hollowed-out prompt is a failed generation, not a silent one.
+   *
+   * @returns {Promise<{text: string, trackData: object}>}
+   */
+  async generate(musician, context, { user, buildSystem }) {
+    await this.ready;
+    if (!this.aiReady) {
+      throw new Error(`LaunchDarkly unreachable${this.initError ? `: ${this.initError}` : ''}`);
+    }
+
+    const handler = createHandler(['anthropic', 'messages'], async (cfg, _userInput, _toolHandlers, variables) => {
+      const systemMessages = (cfg.messages ?? []).filter((m) => m.role === 'system');
+      // Same reason as the read path: invoke() forwards `variables` without
+      // rendering them, so the model would otherwise receive the literal
+      // "{{section}}".
+      const systemBase = parseTemplate(systemMessages[0]?.content ?? '', variables ?? {});
+
+      const invalidReason = checkAssembledPrompt(systemBase);
+      if (invalidReason) {
+        throw new Error(invalidReason);
+      }
+
+      // gain_ceiling and strict_gain_ceiling MUST come out before the rest is
+      // spread into the Anthropic request body; an unknown body parameter is
+      // a 400.
+      const { gain_ceiling: _g, strict_gain_ceiling: _s, ...parameters } = cfg.model?.parameters ?? {};
+
+      const { text, usage } = await generatePattern({
+        model: cfg.model?.name,
+        parameters,
+        system: buildSystem(systemBase),
+        user,
+      });
+
+      return { output: text, usage };
+    });
+
+    const response = await aiConfig({ key: musician, handler }).invoke(
+      user,
+      context,
+      buildVariables(context),
+    );
+
+    return { text: response.response, trackData: response.trackData };
+  }
+
+  /**
+   * Record user feedback against the same context that selected the variation.
+   *
+   * The AI SDK has no feedback API, so this emits the legacy event directly.
+   * trackData carries the served variation so the event stays attributable to
+   * it, exactly as the tracker's own feedback call used to.
+   */
+  async trackFeedback(context, kind, trackData) {
+    await this.ready;
+    const event = FEEDBACK_EVENTS[kind];
+    if (!this.ldClient || !event) return;
+    try {
+      this.ldClient.track(event, context, trackData, 1);
+    } catch (error) {
+      console.warn(`trackFeedback(${kind}) failed: ${error?.message ?? error}`);
+    }
   }
 
   /**
@@ -224,7 +314,7 @@ export class LaunchDarklyConfigProvider extends ConfigProvider {
    */
   async boolFlag(key, context, defaultValue = false) {
     await this.ready;
-    if (!this.aiClient) return defaultValue;
+    if (!this.aiReady) return defaultValue;
     try {
       return await this.ldClient.variation(key, context, defaultValue);
     } catch {

@@ -26,8 +26,12 @@
  *     variationKey: string,        // '' ⇒ SDK DEFAULT SERVED, i.e. LD not driving this
  *     variationVersion: number,
  *     reason: object|null,         // {kind, ruleIndex, ruleId} when LD_EXPLAIN=1
- *     createTracker: () => Tracker // call once PER ATTEMPT, not per turn
  *   }
+ *
+ * This describes a READ. It emits nothing, so a caller can decide whether a
+ * take is playable before any spend. Running the model is a separate call,
+ * generate(), which is what records duration, tokens, and success/error —
+ * there is no tracker to hand back any more.
  */
 export class ConfigProvider {
   /**
@@ -50,6 +54,32 @@ export class ConfigProvider {
   async getMusicianConfig(musician, context) {
     throw new Error('ConfigProvider.getMusicianConfig not implemented');
   }
+
+  /**
+   * Run one generation attempt and record it.
+   *
+   * The model call belongs to the provider because that is where the
+   * telemetry is: the SDK records duration, tokens, and success/error around
+   * the call it drives. `buildSystem` receives the served `systemBase` and
+   * returns the full system prompt, which lets the caller own prompt assembly
+   * without needing the config in hand first.
+   *
+   * @param {string} musician
+   * @param {object} context - the multi-context from buildContext
+   * @param {{user: string, buildSystem: (systemBase: string) => string}} args
+   * @returns {Promise<{text: string, trackData: object}>}
+   */
+  async generate(musician, context, args) {
+    throw new Error('ConfigProvider.generate not implemented');
+  }
+
+  /**
+   * Record user feedback against the variation that produced the take.
+   * @param {object} context - the same context that selected the variation
+   * @param {'positive'|'negative'} kind
+   * @param {object} [trackData] - from generate(), so the event is attributable
+   */
+  async trackFeedback(context, kind, trackData) {}
 
   /**
    * Record a custom metric. MUST be called with the same context object that
