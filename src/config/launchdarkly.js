@@ -233,7 +233,9 @@ export class LaunchDarklyConfigProvider extends ConfigProvider {
       throw new Error(`LaunchDarkly unreachable${this.initError ? `: ${this.initError}` : ''}`);
     }
 
-    const handler = createHandler(['anthropic', 'messages'], async (cfg, _userInput, _toolHandlers, variables) => {
+    // Provider name is case-sensitive from 0.4.0 and must match the variation:
+    // LaunchDarkly serves provider.name "Anthropic", not "anthropic".
+    const handler = createHandler(['Anthropic', 'messages'], async (cfg, _userInput, _toolHandlers, variables) => {
       const systemMessages = (cfg.messages ?? []).filter((m) => m.role === 'system');
       // Same reason as the read path: invoke() forwards `variables` without
       // rendering them, so the model would otherwise receive the literal
