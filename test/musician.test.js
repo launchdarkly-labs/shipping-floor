@@ -42,10 +42,10 @@ function harness({ failOn = null } = {}) {
         systemBase: '',
         snippets: [],
         variationKey: '',
-        createTracker: () => ({ async trackMetricsOf(_e, call) { return call(); }, trackFeedback() {} }),
       };
     },
     async track() {},
+    async trackFeedback() {},
     async boolFlag() { return false; },
   };
 

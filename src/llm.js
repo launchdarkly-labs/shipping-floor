@@ -11,20 +11,18 @@ function getClient() {
 }
 
 /**
- * Map an Anthropic Messages response to the LaunchDarkly AI SDK's metrics
- * shape. Passed to tracker.trackMetricsOf, which records duration and
- * success/error itself. (Node has no Anthropic provider package, so this is
- * the documented Tier-3 custom extractor.)
+ * Map an Anthropic Messages response to the usage shape the AI SDK reads.
+ *
+ * Anthropic already names these input_tokens/output_tokens, which is one of
+ * the spellings the SDK recognises. It derives the total itself, so none is
+ * reported here. (Node has no Anthropic provider package, so the call is
+ * wrapped in a custom handler.)
  */
-export function anthropicMetrics(response) {
+export function anthropicUsage(response) {
   const usage = response.usage ?? {};
   return {
-    success: true,
-    tokens: {
-      input: usage.input_tokens ?? 0,
-      output: usage.output_tokens ?? 0,
-      total: (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0),
-    },
+    input_tokens: usage.input_tokens ?? 0,
+    output_tokens: usage.output_tokens ?? 0,
   };
 }
 
@@ -43,22 +41,26 @@ export function anthropicMetrics(response) {
  * untracked and hard-coded max_tokens: 300, ignoring the configured
  * parameters entirely.
  *
- * The tracker is required, and there is one PER ATTEMPT. A retry is a
- * separate execution of the model that costs real tokens; passing null on
- * retries is how "100% of spend is tracked" stops being true.
+ * This no longer takes a tracker. It is called from inside the handler that
+ * the AI SDK invokes, so duration and success/error are recorded around it
+ * automatically, and it just reports the tokens it used. There is still one
+ * execution PER ATTEMPT: a retry is a separate invoke() with its own runId,
+ * which is what keeps "100% of spend is tracked" true.
+ *
+ * @returns {Promise<{text: string, usage: object}>}
  */
-export async function generatePattern({ model, parameters, system, user, tracker }) {
-  const call = () =>
-    getClient().messages.create({
-      model,
-      ...parameters, // max_tokens, plus any temperature/top_p set in the config
-      system,
-      messages: [{ role: 'user', content: user }],
-    });
+export async function generatePattern({ model, parameters, system, user }) {
+  const response = await getClient().messages.create({
+    model,
+    ...parameters, // max_tokens, plus any temperature/top_p set in the config
+    system,
+    messages: [{ role: 'user', content: user }],
+  });
 
-  const response = await tracker.trackMetricsOf(anthropicMetrics, call);
-  return response.content
+  const text = response.content
     .filter((block) => block.type === 'text')
     .map((block) => block.text)
     .join('');
+
+  return { text, usage: anthropicUsage(response) };
 }

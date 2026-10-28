@@ -1,4 +1,3 @@
-import { generatePattern } from './llm.js';
 import { lintPattern, extractPattern } from './validate.js';
 
 /** LaunchDarkly metric keys. Kept small on purpose; see seed/configs.json. */
@@ -195,23 +194,22 @@ export class Musician {
     };
 
     let feedback = null;
-    let lastTracker = null;
+    let lastTrackData = null;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-      // A fresh tracker per attempt: each gets its own runId, and a retry is
-      // a separate execution that costs real tokens.
-      const tracker = config.createTracker();
-      lastTracker = tracker;
       if (attempt > 1) this.ledger.retries += 1;
       this.ledger.generations += 1;
 
-      const raw = await generatePattern({
-        model: config.model.name,
-        parameters: config.model.parameters,
-        system: this.#systemPrompt(config.systemBase),
+      // One invoke per attempt: each is a separate execution with its own
+      // runId, so a retry is tracked as the separate cost it really is. The
+      // model and parameters come from the config the SDK serves inside the
+      // handler, not from the copy read earlier, so the attempt is always
+      // charged against the variation that actually produced it.
+      const { text: raw, trackData } = await this.configProvider.generate(this.name, context, {
         user: this.#userPrompt(state, feedback),
-        tracker,
+        buildSystem: (systemBase) => this.#systemPrompt(systemBase),
       });
+      lastTrackData = trackData;
       const pattern = extractPattern(raw);
       const lint = lintPattern(pattern, lintOptions);
 
@@ -255,7 +253,7 @@ export class Musician {
       if (result.ok) {
         this.ledger.published += 1;
         await this.configProvider.track(METRIC_PUBLISH_SUCCESS, context);
-        tracker.trackFeedback({ kind: 'positive' });
+        await this.configProvider.trackFeedback(context, 'positive', lastTrackData);
         return;
       }
 
@@ -274,7 +272,7 @@ export class Musician {
 
     // Hold-last-known-good. The band never stops; it just stops changing.
     this.ledger.keptPrevious += 1;
-    lastTracker?.trackFeedback({ kind: 'negative' });
+    await this.configProvider.trackFeedback(context, 'negative', lastTrackData);
     this.onEvent({
       musician: this.name,
       event: 'kept-previous',
